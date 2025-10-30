@@ -1,6 +1,6 @@
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
-  siteUrl: process.env.SITE_URL || 'https://YOUR-DOMAIN',
+  siteUrl: process.env.SITE_URL || 'https://landingtest-six.vercel.app',
   generateRobotsTxt: true,
   robotsTxtOptions: {
     policies: [

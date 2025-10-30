@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-const siteUrl = "https://YOUR-DOMAIN.com"; // ← 배포 도메인으로 교체
+const siteUrl = "https://landingtest-six.vercel.app"; // ← 배포 도메인으로 교체
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     siteName: "BSD AI",
     images: [
       {
-        url: `${siteUrl}/bsd-og.png`, // public/1200630.png
+        url: "/bsd-og.png",
         width: 1200,
         height: 630,
         alt: "BSD AI 사이트 모음집",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "BSD AI 사이트 모음집",
     description: "AI 바이브코딩 & 퍼널마케팅 리소스 컬렉션.",
-    images: [`${siteUrl}/bsd-og.png`], // public/1200630.png
+    images: ["/bsd-og.png"],
   },
   // 'keywords'는 비권장이나 요청 시 최소화하여 배열로:
   keywords: ["AI 바이브코딩", "퍼널마케팅", "랜딩페이지", "BSD", "퍼널띵"],
