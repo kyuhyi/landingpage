@@ -9,6 +9,7 @@ import UrgencySection from "@/components/UrgencySection";
 import CTASection from "@/components/CTASection";
 import FAQSection from "@/components/FAQSection";
 import Footer from "@/components/Footer";
+import Chatbot from "@/components/Chatbot";
 
 export default function Home() {
   return (
@@ -34,6 +35,7 @@ export default function Home() {
         </div>
         <Footer />
       </main>
+      <Chatbot />
     </>
   );
 }

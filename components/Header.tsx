@@ -46,6 +46,7 @@ export default function Header() {
                 src="/bsd-white.png"
                 alt="BSD Logo"
                 fill
+                sizes="128px"
                 className="object-contain"
                 priority
               />
