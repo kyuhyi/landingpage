@@ -8,107 +8,77 @@ interface NewsItem {
   imageUrl?: string;
 }
 
-// 로컬 환경 체크
-const isLocal = process.env.NODE_ENV === "development";
-
-// Playwright 크롤링 (로컬 전용)
-async function crawlNaverNewsLocal(): Promise<NewsItem[]> {
-  if (!isLocal) {
-    return []; // Vercel에서는 실행하지 않음
-  }
+// Google News RSS에서 AI 뉴스 가져오기
+async function fetchGoogleNewsRSS(): Promise<NewsItem[]> {
+  const newsItems: NewsItem[] = [];
 
   try {
-    const { chromium } = require("playwright");
-    const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
-    const newsItems: NewsItem[] = [];
+    console.log("=== Google News RSS에서 AI 뉴스 가져오기 시작 ===");
 
-    console.log("=== 로컬: Playwright 크롤링 시작 ===");
+    const response = await fetch(
+      "https://news.google.com/rss/search?q=AI+OR+%EC%9D%B8%EA%B3%B5%EC%A7%80%EB%8A%A5+OR+ChatGPT+when:7d&hl=ko&gl=KR&ceid=KR:ko",
+      { cache: "no-store" }
+    );
 
-    await page.goto("https://search.naver.com/search.naver?where=news&query=AI+인공지능+ChatGPT&sort=1", {
-      waitUntil: "domcontentloaded",
-      timeout: 15000,
-    });
+    if (!response.ok) {
+      throw new Error(`RSS fetch failed: ${response.status}`);
+    }
 
-    await page.waitForTimeout(2000);
+    const xmlText = await response.text();
 
-    const articles = await page.evaluate(() => {
-      const items: any[] = [];
-      const seenUrls = new Set<string>();
-      const seenTitles = new Set<string>();
-      const newsLinks = document.querySelectorAll('a[href]');
+    // XML 파싱
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+    const items = [...xmlText.matchAll(itemRegex)];
 
-      newsLinks.forEach((link) => {
-        const anchor = link as HTMLAnchorElement;
-        const href = anchor.href;
-        const title = anchor.textContent?.trim() || "";
+    for (const match of items) {
+      const itemXml = match[1];
 
-        if (title.length < 20 || title.length > 200) return;
-        if (!title.includes('AI') && !title.includes('인공지능') && !title.includes('ChatGPT') && !title.includes('챗')) return;
-        if (!href || href.includes('help.naver') || href.includes('policy.naver') || href.includes('media.naver.com/press')) return;
-        if (seenUrls.has(href) || seenTitles.has(title)) return;
+      // 제목 추출
+      const titleMatch = itemXml.match(/<title>(.*?)<\/title>/);
+      const title = titleMatch ? titleMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/, '$1').trim() : "";
 
-        let description = title;
-        let parent = anchor.parentElement;
-        if (parent) {
-          const allText = parent.textContent?.trim() || "";
-          if (allText.length > title.length) {
-            description = allText.substring(0, 150);
-          }
-        }
+      // 링크 추출
+      const linkMatch = itemXml.match(/<link>(.*?)<\/link>/);
+      const link = linkMatch ? linkMatch[1] : "";
 
-        let imageUrl = "";
-        let searchParent = anchor.parentElement;
-        let depth = 0;
+      // 발행일 추출
+      const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/);
+      const pubDate = pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString();
 
-        while (searchParent && searchParent.tagName !== 'BODY' && depth < 10) {
-          depth++;
-          const imgs = searchParent.querySelectorAll('img');
+      // 설명 추출
+      const descMatch = itemXml.match(/<description>(.*?)<\/description>/);
+      let description = title;
+      if (descMatch) {
+        description = descMatch[1].replace(/<[^>]*>/g, "").replace(/&[^;]+;/g, " ").trim();
+      }
 
-          for (const img of imgs) {
-            const src = img.src;
-            if (src && !src.includes('profile') && !src.includes('logo') && !src.includes('data:image') && (src.startsWith('http') || src.startsWith('//'))) {
-              imageUrl = src.startsWith('//') ? 'https:' + src : src;
-              break;
-            }
-          }
-
-          if (imageUrl) break;
-          searchParent = searchParent.parentElement;
-        }
-
-        seenUrls.add(href);
-        seenTitles.add(title);
-
-        items.push({
+      if (title && link) {
+        newsItems.push({
           title: title.substring(0, 100),
-          link: href,
+          link: link,
           description: description.substring(0, 150),
-          pubDate: new Date().toISOString(),
-          imageUrl: imageUrl || undefined,
+          pubDate: pubDate,
+          imageUrl: undefined,
         });
-      });
+      }
 
-      return items.slice(0, 15);
-    });
+      if (newsItems.length >= 15) break;
+    }
 
-    await browser.close();
-    console.log(`✅ 로컬: ${articles.length}개 뉴스 크롤링 완료`);
-    newsItems.push(...articles.filter((item: any) => item.title && item.link));
-
-    return newsItems;
+    console.log(`✅ Google News RSS: ${newsItems.length}개 AI 뉴스 수집`);
   } catch (error) {
-    console.error("로컬 크롤링 실패:", error);
-    return [];
+    console.error("Google News RSS 가져오기 실패:", error);
   }
+
+  return newsItems;
 }
 
 export async function GET() {
   try {
     console.log("=== 한국 AI 뉴스 가져오기 시작 ===");
 
-    // 로컬에서는 Playwright 크롤링, Vercel에서는 더미 데이터
-    const newsItems = await crawlNaverNewsLocal();
+    // Google News RSS로 뉴스 가져오기 (로컬/Vercel 모두 동일)
+    const newsItems = await fetchGoogleNewsRSS();
 
     console.log(`✅ ${newsItems.length}개 뉴스 수집 완료 (이미지 포함)`);
 
