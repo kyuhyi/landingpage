@@ -3,6 +3,7 @@ import HeroSection from "@/components/HeroSection";
 import ProblemSection from "@/components/ProblemSection";
 import SolutionSection from "@/components/SolutionSection";
 import SocialProofSection from "@/components/SocialProofSection";
+import NewsSection from "@/components/NewsSection";
 import CurriculumSection from "@/components/CurriculumSection";
 import InstructorSection from "@/components/InstructorSection";
 import UrgencySection from "@/components/UrgencySection";
@@ -22,6 +23,7 @@ export default function Home() {
         <ProblemSection />
         <SolutionSection />
         <SocialProofSection />
+        <NewsSection />
         <div id="curriculum-section">
           <CurriculumSection />
         </div>
