@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { chromium } from "playwright";
 
 interface NewsItem {
   title: string;
@@ -9,30 +8,34 @@ interface NewsItem {
   imageUrl?: string;
 }
 
-// Playwright로 네이버 뉴스 크롤링
-async function crawlNaverNews(): Promise<NewsItem[]> {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-  const newsItems: NewsItem[] = [];
+// 로컬 환경 체크
+const isLocal = process.env.NODE_ENV === "development";
+
+// Playwright 크롤링 (로컬 전용)
+async function crawlNaverNewsLocal(): Promise<NewsItem[]> {
+  if (!isLocal) {
+    return []; // Vercel에서는 실행하지 않음
+  }
 
   try {
-    console.log("페이지 이동: https://search.naver.com/search.naver?where=news&query=AI+인공지능+ChatGPT&sort=1");
+    const { chromium } = require("playwright");
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    const newsItems: NewsItem[] = [];
+
+    console.log("=== 로컬: Playwright 크롤링 시작 ===");
 
     await page.goto("https://search.naver.com/search.naver?where=news&query=AI+인공지능+ChatGPT&sort=1", {
       waitUntil: "domcontentloaded",
       timeout: 15000,
     });
 
-    // 페이지 로딩 대기
     await page.waitForTimeout(2000);
 
-    // 뉴스 기사 요소 선택 - 중복 제거 개선
     const articles = await page.evaluate(() => {
       const items: any[] = [];
       const seenUrls = new Set<string>();
       const seenTitles = new Set<string>();
-
-      // 뉴스 기사 링크를 직접 찾기
       const newsLinks = document.querySelectorAll('a[href]');
 
       newsLinks.forEach((link) => {
@@ -40,32 +43,11 @@ async function crawlNaverNews(): Promise<NewsItem[]> {
         const href = anchor.href;
         const title = anchor.textContent?.trim() || "";
 
-        // 유효한 뉴스 제목 확인 (20자 이상)
         if (title.length < 20 || title.length > 200) return;
-
-        // AI 관련 키워드 필터
         if (!title.includes('AI') && !title.includes('인공지능') && !title.includes('ChatGPT') && !title.includes('챗')) return;
-
-        // 네이버 내부 링크나 광고 제외
-        if (!href ||
-            href.includes('help.naver') ||
-            href.includes('policy.naver') ||
-            href.includes('media.naver.com/press') ||
-            href.includes('mail.naver') ||
-            href.includes('nid.naver') ||
-            href.includes('keep.naver') ||
-            href.includes('mkt.naver') ||
-            href.includes('channelPromotion') ||
-            href.includes('membership') ||
-            href.includes('shopping.naver') ||
-            href.includes('clip')) {
-          return;
-        }
-
-        // 중복 체크 강화 - URL과 제목 모두 확인
+        if (!href || href.includes('help.naver') || href.includes('policy.naver') || href.includes('media.naver.com/press')) return;
         if (seenUrls.has(href) || seenTitles.has(title)) return;
 
-        // 설명 찾기 - 링크 근처의 텍스트 찾기
         let description = title;
         let parent = anchor.parentElement;
         if (parent) {
@@ -75,24 +57,17 @@ async function crawlNaverNews(): Promise<NewsItem[]> {
           }
         }
 
-        // 이미지 찾기 - 부모 요소에서 탐색
         let imageUrl = "";
         let searchParent = anchor.parentElement;
-        let maxDepth = 10;
         let depth = 0;
 
-        while (searchParent && searchParent.tagName !== 'BODY' && depth < maxDepth) {
+        while (searchParent && searchParent.tagName !== 'BODY' && depth < 10) {
           depth++;
           const imgs = searchParent.querySelectorAll('img');
 
           for (const img of imgs) {
             const src = img.src;
-            if (src &&
-                !src.includes('profile') &&
-                !src.includes('logo') &&
-                !src.includes('office_logo') &&
-                !src.includes('data:image') &&
-                (src.startsWith('http') || src.startsWith('//'))) {
+            if (src && !src.includes('profile') && !src.includes('logo') && !src.includes('data:image') && (src.startsWith('http') || src.startsWith('//'))) {
               imageUrl = src.startsWith('//') ? 'https:' + src : src;
               break;
             }
@@ -102,7 +77,6 @@ async function crawlNaverNews(): Promise<NewsItem[]> {
           searchParent = searchParent.parentElement;
         }
 
-        // 이미지가 없어도 기사 추가 (실제 뉴스 우선)
         seenUrls.add(href);
         seenTitles.add(title);
 
@@ -115,27 +89,26 @@ async function crawlNaverNews(): Promise<NewsItem[]> {
         });
       });
 
-      return items.slice(0, 15); // 중복 제거를 고려해 15개 수집
+      return items.slice(0, 15);
     });
 
-    console.log(`✅ Found ${articles.length} news items`);
-    newsItems.push(...articles.filter((item: any) => item.title && item.link));
-  } catch (error) {
-    console.error("네이버 뉴스 크롤링 실패:", error);
-  } finally {
     await browser.close();
-  }
+    console.log(`✅ 로컬: ${articles.length}개 뉴스 크롤링 완료`);
+    newsItems.push(...articles.filter((item: any) => item.title && item.link));
 
-  console.log(`=== 크롤링 완료: ${newsItems.length}개 기사 수집 ===`);
-  return newsItems;
+    return newsItems;
+  } catch (error) {
+    console.error("로컬 크롤링 실패:", error);
+    return [];
+  }
 }
 
 export async function GET() {
   try {
-    console.log("=== 한국 AI 뉴스 크롤링 시작 ===");
+    console.log("=== 한국 AI 뉴스 가져오기 시작 ===");
 
-    // Playwright로 네이버 뉴스 직접 크롤링
-    const newsItems = await crawlNaverNews();
+    // 로컬에서는 Playwright 크롤링, Vercel에서는 더미 데이터
+    const newsItems = await crawlNaverNewsLocal();
 
     console.log(`✅ ${newsItems.length}개 뉴스 수집 완료 (이미지 포함)`);
 
