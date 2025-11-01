@@ -8,6 +8,25 @@ interface NewsItem {
   imageUrl?: string;
 }
 
+// AI 관련 Unsplash 이미지 풀
+const AI_IMAGES = [
+  "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop", // AI concept
+  "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=400&h=300&fit=crop", // AI technology
+  "https://images.unsplash.com/photo-1555421689-491a97ff2040?w=400&h=300&fit=crop", // Web/AI
+  "https://images.unsplash.com/photo-1587620962725-abab7fe55159?w=400&h=300&fit=crop", // Programming
+  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=300&fit=crop", // AI education
+  "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=400&h=300&fit=crop", // Business AI
+  "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=400&h=300&fit=crop", // Tech
+  "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=300&fit=crop", // Teamwork
+  "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&h=300&fit=crop", // Innovation
+  "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=300&fit=crop", // Digital
+  "https://images.unsplash.com/photo-1535378917042-10a22c95931a?w=400&h=300&fit=crop", // Code
+  "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&h=300&fit=crop", // Technology
+  "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=300&fit=crop", // Tech background
+  "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400&h=300&fit=crop", // Data
+  "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=300&fit=crop", // Laptop
+];
+
 // Google News RSS에서 AI 뉴스 가져오기
 async function fetchGoogleNewsRSS(): Promise<NewsItem[]> {
   const newsItems: NewsItem[] = [];
@@ -53,12 +72,15 @@ async function fetchGoogleNewsRSS(): Promise<NewsItem[]> {
       }
 
       if (title && link) {
+        // 랜덤 AI 이미지 선택
+        const randomImage = AI_IMAGES[Math.floor(Math.random() * AI_IMAGES.length)];
+
         newsItems.push({
           title: title.substring(0, 100),
           link: link,
           description: description.substring(0, 150),
           pubDate: pubDate,
-          imageUrl: undefined,
+          imageUrl: randomImage,
         });
       }
 
